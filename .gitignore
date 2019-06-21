@@ -1,0 +1,10 @@
+*.retry
+*.terraform/
+*.vagrant/
+
+*.log
+
+.DS_Store
+
+*.swp
+*.swo

@@ -1,0 +1,5 @@
+---
+
+- name: configure vpn server
+  hosts: tag_function_vpnserver
+  become: yes
