@@ -120,6 +120,7 @@ resource "aws_instance" "vpn-dev" {
 
     key_name = "${aws_key_pair.vpn_access.id}"
     security_groups = ["${aws_security_group.vpn_sg.id}"]
+    user_data       = "${file("userdata")}"
 
     tags = {
         Name = "dsrvpn_dev"
@@ -129,11 +130,12 @@ resource "aws_instance" "vpn-dev" {
 }
 
 resource "aws_instance" "vpn-prod" {
-    ami           = "${data.aws_ami.ubuntu.id}"
-    instance_type = "t2.nano"
+    ami             = "${data.aws_ami.ubuntu.id}"
+    instance_type   = "t2.nano"
 
-    key_name = "${aws_key_pair.vpn_access.id}"
+    key_name        = "${aws_key_pair.vpn_access.id}"
     security_groups = ["${aws_security_group.vpn_sg.id}"]
+    user_data       = "${file("userdata")}"
 
     tags = {
         Name = "dsrvpn"

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -e
+
+apt update ; apt dist-upgrade -y
+apt install unattended-upgrades
+dpkg-reconfigure unattended-upgrades
