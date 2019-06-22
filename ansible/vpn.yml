@@ -1,5 +1,103 @@
 ---
 
+- name: configure ca server
+  hosts: tag_function_caserver
+  user: ubuntu
+  become: yes
+  tags: ca
+
+  tasks:
+  - name: make ca dir
+    file:
+      path: /srv/ca
+      owner: root
+      group: root
+      mode: '0600'
+    register: ca_dir
+    tags: stop
+
+  - name: make easyrsa dir
+    file:
+      path: /usr/local/share/easyrsa
+      mode: '0755'
+      state: directory
+
+  - name: download and unpack easyrsa
+    unarchive:
+      src: https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.6/EasyRSA-unix-v3.0.6.tgz
+      dest: /usr/local/share/easyrsa
+      remote_src: yes
+      extra_opts:
+        - --strip-components
+        - '1'
+
+  - name: init pki directory
+    command: /usr/local/share/easyrsa/easyrsa --pki-dir={{ ca_dir.path }} --batch init-pki
+    args:
+      creates: "{{ ca_dir.path }}/openssl-easyrsa.cnf"
+
+  - name: create .rnd folder
+    command: dd if=/dev/urandom of={{ ca_dir.path }}/.rnd bs=256 count=1
+    args:
+      creates: "{{ ca_dir.path }}/.rnd"
+
+  - name: build ca
+    shell: echo 'beaglesinc' | /usr/local/share/easyrsa/easyrsa --pki-dir={{ ca_dir.path }} --batch build_ca
+    args:
+      creates: "{{ ca_dir.path }}/ca.crt"
+
+
 - name: configure vpn server
   hosts: tag_function_vpnserver
+  user: ubuntu
   become: yes
+
+  tasks:
+  - name: install packages
+    apt:
+      name: "{{ packages }}"
+      state: latest
+    vars:
+      packages:
+        - openvpn
+
+  - name: make easyrsa dir
+    file:
+      path: /usr/local/share/easyrsa
+      mode: '0755'
+      state: directory
+
+  - name: download and unpack easyrsa
+    unarchive:
+      src: https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.6/EasyRSA-unix-v3.0.6.tgz
+      dest: /usr/local/share/easyrsa
+      remote_src: yes
+      extra_opts:
+        - --strip-components
+        - '1'
+
+  - name: set ipv4 forwarding
+    sysctl:
+       name: net.ipv4.ip_forward
+       value: 1
+       state: present
+
+  - name: init pki directory
+    command: /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn/server --batch init-pki
+    args:
+      creates: "/etc/openvpn/server/openssl-easyrsa.cnf"
+
+  - name: create .rnd folder
+    command: dd if=/dev/urandom of=/etc/openvpn/server/.rnd bs=256 count=1
+    args:
+      creates: "/etc/openvpn/server/.rnd"
+
+  - name: init pki directory
+    shell: echo 'server' | /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn/server --batch gen-req server nopass
+    args:
+      creates: "/etc/openvpn/server/private/server.key"
+
+  - name: register contents of req file to a variable
+    slurp:
+      src: /etc/openvpn/server/reqs/server.req
+    register: server_req
