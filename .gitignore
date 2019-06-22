@@ -1,6 +1,7 @@
 *.retry
 *.terraform/
 *.vagrant/
+*.tfvars
 
 *.log
 
