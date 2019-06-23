@@ -61,6 +61,12 @@
       packages:
         - openvpn
 
+  - name: openvpn firewall port
+    ufw:
+      rule: allow
+      port: 1194
+      proto: udp
+
   - name: make easyrsa dir
     file:
       path: /usr/local/share/easyrsa
