@@ -249,6 +249,7 @@
     - tag_function_caserver
   become: yes
   user: ubuntu
+  tags: dyndns
 
   roles:
     - rofrantz.duckdns
