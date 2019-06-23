@@ -196,6 +196,9 @@
         - "{{ vpn_ca_crt }}"
         - "{{ vpn_server_crt }}"
         - "{{ vpn_client_crt }}"
+      tags:
+        - certificates
+        - ca_off
 
     - name: generate dh
       command: /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn gen-dh
