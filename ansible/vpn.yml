@@ -180,6 +180,12 @@
     vpn_server_crt: "{{ hostvars[groups['tag_function_caserver'][0]]['server_crt'] }}"
     vpn_client_crt: "{{ hostvars[groups['tag_function_caserver'][0]]['client_crt'] }}"
 
+  handlers:
+    - name: restart openvpn
+      systemd:
+        name: openvpn@server
+        state: restarted
+
 
   tasks:
     - name: copy certs to openvpn dir
@@ -201,6 +207,20 @@
       args:
         chdir: /etc/openvpn
         creates: /etc/openvpn/ta.key
+# openvpn specific
+    - name: place server.conf file
+      template:
+        src: server.conf.j2
+        dest: /etc/openvpn/server.conf
+      notify: restart openvpn
+      tags: openvpn
+
+    - name: enable openvpn
+      systemd:
+        name: openvpn@server
+        state: started
+        enabled: yes
+      tags: openvpn
 
 - name: install duckdns for dynamic dns updates
   hosts:
