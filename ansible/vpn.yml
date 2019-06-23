@@ -4,7 +4,7 @@
   hosts: tag_function_caserver
   user: ubuntu
   become: yes
-  tags: ca
+  tags: certs
 
   tasks:
   - name: make ca dir
@@ -60,18 +60,23 @@
     vars:
       packages:
         - openvpn
+    tags: openvpn
 
   - name: openvpn firewall port
     ufw:
       rule: allow
       port: 1194
       proto: udp
+    tags: openvpn
 
   - name: make easyrsa dir
     file:
       path: /usr/local/share/easyrsa
       mode: '0755'
       state: directory
+    tags:
+      - openvpn
+      - certs
 
   - name: download and unpack easyrsa
     unarchive:
@@ -81,12 +86,16 @@
       extra_opts:
         - --strip-components
         - '1'
+    tags:
+      - openvpn
+      - certs
 
   - name: set ipv4 forwarding
     sysctl:
        name: net.ipv4.ip_forward
        value: 1
        state: present
+    tags: openvpn
 
   - name: init pki directory
     command: /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn/{{ item }} --batch init-pki
@@ -95,6 +104,7 @@
     loop:
       - "server"
       - "client"
+    tags: certs
 
   - name: create .rnd file
     command: dd if=/dev/urandom of=/etc/openvpn/{{ item }}/.rnd bs=256 count=1
@@ -103,6 +113,7 @@
     loop:
       - "server"
       - "client"
+    tags: certs
 
   - name: create server req
     shell: echo '{{ item }}' | /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn/{{ item }} --batch gen-req {{ item }}  nopass
@@ -111,22 +122,26 @@
     loop:
       - "server"
       - "client"
+    tags: certs
 
   - name: register contents of server req file to a variable
     slurp:
       src: /etc/openvpn/server/reqs/server.req
     register: "server_req"
+    tags: certs
 
   - name: register contents of client req file to a variable
     slurp:
       src: /etc/openvpn/client/reqs/client.req
     register: "client_req"
+    tags: certs
 
 
 - name: sign the cert on the ca server
   hosts: tag_function_caserver
   user: ubuntu
   become: yes
+  tags: certs
   vars:
     ca_server_req: "{{ hostvars[groups['tag_function_vpnserver'][0]].server_req }}"
     ca_client_req: "{{ hostvars[groups['tag_function_vpnserver'][0]].client_req }}"
@@ -197,19 +212,20 @@
         - "{{ vpn_server_crt }}"
         - "{{ vpn_client_crt }}"
       tags:
-        - certificates
-        - ca_off
+        - certs
 
     - name: generate dh
       command: /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn gen-dh
       args:
         creates: /etc/openvpn/dh.pem
+      tags: openvpn
 
     - name: generate HMAC signature
       command: openvpn --genkey --secret ta.key
       args:
         chdir: /etc/openvpn
         creates: /etc/openvpn/ta.key
+      tags: openvpn
 # openvpn specific
     - name: place server.conf file
       template:
@@ -224,6 +240,8 @@
         state: started
         enabled: yes
       tags: openvpn
+
+
 
 - name: install duckdns for dynamic dns updates
   hosts:
