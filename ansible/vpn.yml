@@ -89,21 +89,125 @@
        state: present
 
   - name: init pki directory
-    command: /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn/server --batch init-pki
+    command: /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn/{{ item }} --batch init-pki
     args:
-      creates: "/etc/openvpn/server/openssl-easyrsa.cnf"
+      creates: "/etc/openvpn/{{ item }}/openssl-easyrsa.cnf"
+    loop:
+      - "server"
+      - "client"
 
-  - name: create .rnd folder
-    command: dd if=/dev/urandom of=/etc/openvpn/server/.rnd bs=256 count=1
+  - name: create .rnd file
+    command: dd if=/dev/urandom of=/etc/openvpn/{{ item }}/.rnd bs=256 count=1
     args:
-      creates: "/etc/openvpn/server/.rnd"
+      creates: "/etc/openvpn/{{ item }}/.rnd"
+    loop:
+      - "server"
+      - "client"
 
-  - name: init pki directory
-    shell: echo 'server' | /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn/server --batch gen-req server nopass
+  - name: create server req
+    shell: echo '{{ item }}' | /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn/{{ item }} --batch gen-req {{ item }}  nopass
     args:
-      creates: "/etc/openvpn/server/private/server.key"
+      creates: "/etc/openvpn/{{ item }}/private/server.key"
+    loop:
+      - "server"
+      - "client"
 
-  - name: register contents of req file to a variable
+  - name: register contents of server req file to a variable
     slurp:
       src: /etc/openvpn/server/reqs/server.req
-    register: server_req
+    register: "server_req"
+
+  - name: register contents of client req file to a variable
+    slurp:
+      src: /etc/openvpn/client/reqs/client.req
+    register: "client_req"
+
+
+- name: sign the cert on the ca server
+  hosts: tag_function_caserver
+  user: ubuntu
+  become: yes
+  vars:
+    ca_server_req: "{{ hostvars[groups['tag_function_vpnserver'][0]].server_req }}"
+    ca_client_req: "{{ hostvars[groups['tag_function_vpnserver'][0]].client_req }}"
+
+  tasks:
+    - name: write req file to ca server
+      copy:
+        content: "{{ item.content | b64decode }}"
+        dest: /tmp/{{ item.source | basename }}
+      loop:
+        - "{{ ca_server_req }}"
+        - "{{ ca_client_req }}"
+
+    - name: import req file
+      command: /usr/local/share/easyrsa/easyrsa --pki-dir=/srv/ca import-req /tmp/{{ item }}.req {{ item }}
+      args:
+        creates: /srv/ca/reqs/{{ item }}.req
+      loop:
+        - "server"
+        - "client"
+
+    - name: sign req file
+      command: /usr/local/share/easyrsa/easyrsa --batch --pki-dir=/srv/ca sign-req {{ item }} {{ item }}
+      args:
+        creates: /srv/ca/issued/{{ item }}.crt
+      loop:
+        - "server"
+        - "client"
+
+    - name: register ca file
+      slurp:
+        src: /srv/ca/ca.crt
+      register: ca_crt
+
+    - name: register server cert
+      slurp:
+        src: /srv/ca/issued/server.crt
+      register: "server_crt"
+
+    - name: register client cert
+      slurp:
+        src: /srv/ca/issued/client.crt
+      register: "client_crt"
+
+- name: Set up openvpn with signed certs
+  hosts: tag_function_vpnserver
+  user: ubuntu
+  become: yes
+  vars:
+    vpn_ca_crt: "{{ hostvars[groups['tag_function_caserver'][0]]['ca_crt'] }}"
+    vpn_server_crt: "{{ hostvars[groups['tag_function_caserver'][0]]['server_crt'] }}"
+    vpn_client_crt: "{{ hostvars[groups['tag_function_caserver'][0]]['client_crt'] }}"
+
+
+  tasks:
+    - name: copy certs to openvpn dir
+      copy:
+        content: "{{ item.content | b64decode }}"
+        dest: /etc/openvpn/{{ item.source | basename }}
+      loop:
+        - "{{ vpn_ca_crt }}"
+        - "{{ vpn_server_crt }}"
+        - "{{ vpn_client_crt }}"
+
+    - name: generate dh
+      command: /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn gen-dh
+      args:
+        creates: /etc/openvpn/dh.pem
+
+    - name: generate HMAC signature
+      command: openvpn --genkey --secret ta.key
+      args:
+        chdir: /etc/openvpn
+        creates: /etc/openvpn/ta.key
+
+- name: install duckdns for dynamic dns updates
+  hosts:
+    - tag_function_vpnserver
+    - tag_function_caserver
+  become: yes
+  user: ubuntu
+
+  roles:
+    - rofrantz.duckdns
