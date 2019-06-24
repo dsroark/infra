@@ -24,6 +24,7 @@
       owner: root
       group: root
       mode: '0600'
+      state: directory
     register: ca_dir
     tags: stop
 
@@ -53,7 +54,7 @@
       creates: "{{ ca_dir.path }}/.rnd"
 
   - name: build ca
-    shell: echo 'beaglesinc' | /usr/local/share/easyrsa/easyrsa --pki-dir={{ ca_dir.path }} --batch build_ca
+    shell: echo 'beaglesinc' | /usr/local/share/easyrsa/easyrsa --pki-dir={{ ca_dir.path }} --batch build-ca nopass
     args:
       creates: "{{ ca_dir.path }}/ca.crt"
 
@@ -126,10 +127,10 @@
       - "client"
     tags: certs
 
-  - name: create server req
+  - name: create cert req
     shell: echo '{{ item }}' | /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn/{{ item }} --batch gen-req {{ item }}  nopass
     args:
-      creates: "/etc/openvpn/{{ item }}/private/server.key"
+      creates: "/etc/openvpn/{{ item }}/private/{{ item }}.key"
     loop:
       - "server"
       - "client"
@@ -225,10 +226,10 @@
       tags:
         - certs
 
-    - name: generate dh
-      command: /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn gen-dh
+    - name: generate dh (this will take a few minutes)
+      command: /usr/local/share/easyrsa/easyrsa --pki-dir=/etc/openvpn/server gen-dh
       args:
-        creates: /etc/openvpn/dh.pem
+        creates: /etc/openvpn/server/dh.pem
       tags: openvpn
 
     - name: generate HMAC signature
@@ -251,16 +252,44 @@
         state: started
         enabled: yes
       tags: openvpn
+# configure client
+    - name: create client-config dir
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - '/usr/local/share/vpn-client-configs'
+        - '/usr/local/share/vpn-client-configs/files'
+        - '/usr/local/share/vpn-client-configs/keys'
+      tags: openvpn
 
+    - name: place make_config.sh script
+      template:
+        src: make_config.sh.j2
+        dest: /usr/local/share/vpn-client-configs/make_config.sh
+        mode: 0700
+      tags: openvpn
 
+    - name: copy client key 1
+      copy:
+        src: "{{ item }}"
+        dest: /usr/local/share/vpn-client-configs/keys/{{ item | basename }}
+        remote_src: yes
+      loop:
+        - '/etc/openvpn/client.crt'
+        - '/etc/openvpn/client/private/client.key'
+        - '/etc/openvpn/server/dh.pem'
+        - '/etc/openvpn/ta.key'
+        - '/etc/openvpn/ca.crt'
+      tags: openvpn
 
-- name: install duckdns for dynamic dns updates
-  hosts:
-    - tag_function_vpnserver
-    - tag_function_caserver
-  become: yes
-  user: ubuntu
-  tags: dyndns
-
-  roles:
-    - rofrantz.duckdns
+    - name: place base config
+      template:
+        src: base.conf.j2
+        dest: /usr/local/share/vpn-client-configs/base.conf
+      tags: openvpn
+    - name: run make_config script
+      command: /usr/local/share/vpn-client-configs/make_config.sh client
+      args:
+        creates: /usr/local/share/vpn-client-configs/files/client.ovpn
+      tags: openvpn
