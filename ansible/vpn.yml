@@ -1,5 +1,16 @@
 ---
 
+- name: install duckdns for dynamic dns updates
+  hosts:
+    - tag_function_vpnserver
+    - tag_function_caserver
+  become: yes
+  user: ubuntu
+  tags: dyndns
+
+  roles:
+    - rofrantz.duckdns
+
 - name: configure ca server
   hosts: tag_function_caserver
   user: ubuntu
