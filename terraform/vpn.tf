@@ -79,8 +79,8 @@ resource "aws_security_group" "vpn_sg" {
     cidr_blocks = ["${var.localip}"]
   }
   ingress {
-    from_port   = 1193
-    to_port     = 1193
+    from_port   = 1194
+    to_port     = 1194
     protocol    = "udp"
     cidr_blocks = ["${var.localip}"]
   }
