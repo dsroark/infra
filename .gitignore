@@ -1,12 +1,17 @@
+## ansible
 *.retry
+
+## terraform
 *.tfstate*
 *.terraform/
-*.vagrant/
 *.tfvars
+*.plan
 
+## vagrant
+*.vagrant/
+
+## general
 *.log
-
 .DS_Store
-
 *.swp
 *.swo
