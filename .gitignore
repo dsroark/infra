@@ -1,4 +1,5 @@
 *.retry
+*.tfstate*
 *.terraform/
 *.vagrant/
 *.tfvars
