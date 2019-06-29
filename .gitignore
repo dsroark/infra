@@ -3,9 +3,10 @@
 
 ## terraform
 *.tfstate*
-*.terraform/
-*.tfvars
-*.plan
+.terraform.d/
+.terraform/
+*.tfvars*
+*.plan*
 
 ## vagrant
 *.vagrant/
