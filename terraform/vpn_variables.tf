@@ -1,7 +1,3 @@
-variable "env" {
-    default = "sandbox"
-}
-
 variable "aws_region" {
     default = "us-east-2"
 }

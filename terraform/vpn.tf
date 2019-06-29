@@ -11,8 +11,8 @@ resource "aws_vpc" "vpn_vpc" {
     enable_dns_support = true
 
     tags = {
-        Name = "${var.env}_vpn_vpc"
-		env  = "${var.env}"
+        Name = "${terraform.workspace}_vpn_vpc"
+		env  = "${terraform.workspace}"
     }
 }
 
@@ -22,8 +22,8 @@ resource "aws_internet_gateway" "vpn_internet_gateway" {
     vpc_id = "${aws_vpc.vpn_vpc.id}"
 
     tags = {
-        Name = "${var.env}_vpn_igw"
-		env  = "${var.env}"
+        Name = "${terraform.workspace}_vpn_igw"
+		env  = "${terraform.workspace}"
     }
 }
 
@@ -38,8 +38,8 @@ resource "aws_route_table" "vpn_public_rt" {
         gateway_id = "${aws_internet_gateway.vpn_internet_gateway.id}"
     }
     tags = {
-        Name = "${var.env}_vpn_public"
-		env  = "${var.env}"
+        Name = "${terraform.workspace}_vpn_public"
+		env  = "${terraform.workspace}"
     }
 }
 
@@ -52,8 +52,8 @@ resource "aws_subnet" "vpn_public1_subnet" {
     availability_zone = "${data.aws_availability_zones.available.names[0]}"
 
     tags = {
-        Name = "${var.env}_vpn_public1"
-		env = "${var.env}"
+        Name = "${terraform.workspace}_vpn_public1"
+		env = "${terraform.workspace}"
     }
 }
 
@@ -67,7 +67,7 @@ resource "aws_route_table_association" "vpn_public1_assoc" {
 #------------------- Security Groups --------------------
 
 resource "aws_security_group" "vpn_sg" {
-  name        = "${var.env}_vpn_sg"
+  name        = "${terraform.workspace}_vpn_sg"
   description = "Used for access to the dev instance"
   vpc_id      = "${aws_vpc.vpn_vpc.id}"
 
@@ -95,7 +95,7 @@ resource "aws_security_group" "vpn_sg" {
 #-------------- keys -----------------
 
 resource "aws_key_pair" "vpn_access" {
-  key_name   = "vpn_access"
+  key_name   = "${terraform.workspace}_vpn_access"
   public_key = "${var.pubkey}"
 }
 
@@ -106,8 +106,8 @@ resource "aws_network_interface" "vpn" {
   security_groups = ["${aws_security_group.vpn_sg.id}"]
 
   tags = {
-    Name = "${var.env}_vpn_interface"
-    env  = "${var.env}"
+    Name = "${terraform.workspace}_vpn_interface"
+    env  = "${terraform.workspace}"
   }
 }
 
@@ -116,8 +116,8 @@ resource "aws_network_interface" "ca" {
   security_groups = ["${aws_security_group.vpn_sg.id}"]
 
   tags = {
-    Name = "${var.env}_vpn_interface"
-    env  = "${var.env}"
+    Name = "${terraform.workspace}_vpn_interface"
+    env  = "${terraform.workspace}"
   }
 }
 
@@ -134,8 +134,8 @@ resource "aws_instance" "vpn" {
     }
 
     tags = {
-        Name = "${var.env}_${var.vpn_instance_name}"
-        env  = "${var.env}"
+        Name = "${terraform.workspace}_${var.vpn_instance_name}"
+        env  = "${terraform.workspace}"
         function = "vpnserver"
     }
 }
@@ -153,8 +153,8 @@ resource "aws_instance" "ca" {
     }
 
     tags = {
-        Name = "${var.env}_${var.ca_instance_name}"
-        env  = "${var.env}"
+        Name = "${terraform.workspace}_${var.ca_instance_name}"
+        env  = "${terraform.workspace}"
         function = "caserver"
     }
 }
