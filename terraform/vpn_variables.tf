@@ -23,11 +23,11 @@ variable "cidrs" {
 }
 
 variable vpn_instance_name {
-    default = 'vpn'
+    default = "vpn"
 }
 
 variable ca_instance_name {
-    default = 'ca'
+    default = "ca"
 }
 
 data "aws_ami" "ubuntu" {
