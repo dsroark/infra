@@ -147,24 +147,29 @@
     register: "client_req"
     tags: certs
 
+- name: transfer vpn requests to host vars for ca server
+  hosts:
+    - tag_env_{{ env }}
+  tasks:
+    - name: set facts for request
+      set_fact:
+        server_req: "{{ hostvars[ansible_play_batch | intersect(groups.tag_function_vpnserver) | first].server_req }}"
+        client_req: "{{ hostvars[ansible_play_batch | intersect(groups.tag_function_vpnserver) | first].client_req }}"
+      when: "'tag_function_caserver' in group_names"
 
 - name: sign the cert on the ca server
   hosts: tag_function_caserver:&tag_env_{{ env }}
   user: ubuntu
   become: yes
   tags: certs
-  vars:
-    ca_server_req: "{{ hostvars[groups['tag_function_vpnserver'][0]].server_req }}"
-    ca_client_req: "{{ hostvars[groups['tag_function_vpnserver'][0]].client_req }}"
-
   tasks:
     - name: write req file to ca server
       copy:
         content: "{{ item.content | b64decode }}"
         dest: /tmp/{{ item.source | basename }}
       loop:
-        - "{{ ca_server_req }}"
-        - "{{ ca_client_req }}"
+        - "{{ server_req }}"
+        - "{{ client_req }}"
 
     - name: import req file
       command: /usr/local/share/easyrsa/easyrsa --pki-dir=/srv/ca import-req /tmp/{{ item }}.req {{ item }}
@@ -197,14 +202,22 @@
         src: /srv/ca/issued/client.crt
       register: "client_crt"
 
+- name: transfer vpn certs to host vars for ca server
+  hosts: tag_env_{{ env }}
+  user: ubuntu
+  tasks:
+    - name: set facts for request
+      set_fact:
+        ca_crt: "{{ hostvars[ansible_play_batch | intersect(groups.tag_function_caserver) | first].ca_crt }}"
+        server_crt: "{{ hostvars[ansible_play_batch | intersect(groups.tag_function_caserver) | first].server_crt }}"
+        client_crt: "{{ hostvars[ansible_play_batch | intersect(groups.tag_function_caserver) | first].client_crt }}"
+      when: "'tag_function_vpnserver' in group_names"
+
 - name: Set up openvpn with signed certs
   hosts: tag_function_vpnserver:&tag_env_{{ env }}
   user: ubuntu
   become: yes
   vars:
-    vpn_ca_crt: "{{ hostvars[groups['tag_function_caserver'][0]]['ca_crt'] }}"
-    vpn_server_crt: "{{ hostvars[groups['tag_function_caserver'][0]]['server_crt'] }}"
-    vpn_client_crt: "{{ hostvars[groups['tag_function_caserver'][0]]['client_crt'] }}"
 
   handlers:
     - name: restart openvpn
@@ -219,9 +232,9 @@
         content: "{{ item.content | b64decode }}"
         dest: /etc/openvpn/{{ item.source | basename }}
       loop:
-        - "{{ vpn_ca_crt }}"
-        - "{{ vpn_server_crt }}"
-        - "{{ vpn_client_crt }}"
+        - "{{ ca_crt }}"
+        - "{{ server_crt }}"
+        - "{{ client_crt }}"
       tags:
         - certs
 
