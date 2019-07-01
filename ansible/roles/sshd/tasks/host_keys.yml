@@ -1,0 +1,37 @@
+---
+
+- name: place host keys to suppress host key warning
+  copy:
+    content: "{{ item.content }}"
+    dest: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+    owner: root
+    group: root
+  loop:
+    - path: /etc/ssh/ssh_host_dsa_key
+      mode: '0600'
+      content: "{{ sshd_host_dsa_key_content }}"
+    - path: /etc/ssh/ssh_host_dsa_key.pub
+      mode: '0644'
+      content: "{{ sshd_host_dsa_pubkey_content }}"
+    - path: /etc/ssh/ssh_host_ecdsa_key
+      mode: '0600'
+      content: "{{ sshd_host_ecdsa_key_content }}"
+    - path: /etc/ssh/ssh_host_ecdsa_key.pub
+      mode: '0644'
+      content: "{{ sshd_host_ecdsa_pubkey_content }}"
+    - path: /etc/ssh/ssh_host_ed25519_key
+      mode: '0600'
+      content: "{{ sshd_host_ed25519_key_content }}"
+    - path: /etc/ssh/ssh_host_ed25519_key.pub
+      mode: '0644'
+      content: "{{ sshd_host_ed25519_pubkey_content }}"
+    - path: /etc/ssh/ssh_host_rsa_key
+      mode: '0600'
+      content: "{{ sshd_host_rsa_key_content }}"
+    - path: /etc/ssh/ssh_host_rsa_key.pub
+      mode: '0644'
+      content: "{{ sshd_host_rsa_pubkey_content }}"
+  when: item.content is defined
+  notify: restart sshd
+

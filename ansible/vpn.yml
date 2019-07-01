@@ -1,14 +1,17 @@
 ---
 
-- name: install duckdns for dynamic dns updates
+- name: install duckdns for dynamic dns updates and configure ssh
   hosts:
     - tag_env_{{ env }}
   become: yes
   user: ubuntu
-  tags: dyndns
+  tags:
+    - duckdns
+    - sshd
 
   roles:
     - rofrantz.duckdns
+    - sshd
 
 - name: configure ca server
   hosts: tag_function_caserver:&tag_env_{{ env }}
