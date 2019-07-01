@@ -1,0 +1,8 @@
+---
+
+- name: openssh firewall port
+  ufw:
+    rule: allow
+    port: 22
+    proto: tcp
+  tags: sshd

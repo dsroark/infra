@@ -1,0 +1,32 @@
+---
+
+- name: openvpn firewall port
+  ufw:
+    rule: allow
+    port: 1194
+    proto: udp
+  tags: openvpn
+  notify: enable ufw
+
+- name: setup ufw masquerade
+  blockinfile:
+    path: /etc/ufw/before.rules
+    marker: "# {mark} OPENVPN RULES"
+    insertbefore: "# Don't delete these required lines, otherwise there will be errors"
+    block: |
+      # NAT table rules
+      *nat
+      :POSTROUTING ACCEPT [0:0] 
+      # Allow traffic from OpenVPN client to wlp11s0 (change to the interface you discovered!)
+      -A POSTROUTING -s 10.8.0.0/8 -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+      COMMIT
+  notify: enable ufw
+
+- name: toggle ufw forwarding
+  lineinfile:
+    path: /etc/default/ufw
+    regexp: '^DEFAULT_FORWARD_POLICY='
+    line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
+  notify: enable ufw
+
+

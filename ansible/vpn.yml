@@ -65,10 +65,14 @@
   hosts: tag_function_vpnserver:&tag_env_{{ env }}
   user: ubuntu
   become: yes
+  handlers:
+    - name: enable ufw
+      ufw:
+        state: reloaded
 
   tasks:
   - name: install packages
-    apt:
+    package:
       name: "{{ packages }}"
       state: latest
     vars:
@@ -76,12 +80,7 @@
         - openvpn
     tags: openvpn
 
-  - name: openvpn firewall port
-    ufw:
-      rule: allow
-      port: 1194
-      proto: udp
-    tags: openvpn
+  - include_tasks: tasks/vpn_Ubuntu.yml
 
   - name: make easyrsa dir
     file:
