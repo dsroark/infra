@@ -1,0 +1,12 @@
+# /etc/systemd/system/duckdns-startup.service
+[Unit]
+Description=DuckDNS startup runner
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart={{ duckdns_project_root }}/duck.sh
+
+[Install]
+WantedBy=multi-user.target
