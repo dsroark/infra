@@ -2,9 +2,8 @@
 
 - name: install duckdns for dynamic dns updates and configure ssh
   hosts:
-    - tag_Product_maptool
+    - tag_Role_maptool
   become: yes
-  user: centos
   handlers:
     - name: systemd daemon-reload
       systemd:
