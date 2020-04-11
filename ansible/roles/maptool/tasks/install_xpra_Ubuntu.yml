@@ -1,0 +1,15 @@
+---
+
+- name: add xpra gpg key
+  apt_key:
+    url: https://xpra.org/gpg.asc
+    state: present
+
+- name: add xpra repository
+  apt_repository:
+    repo: deb https://xpra.org/ {{ ansible_distribution_release }} main
+    state: present
+
+- name: install xpra
+  apt:
+    name: xpra 

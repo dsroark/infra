@@ -1,2 +1,8 @@
 ---
 # tasks file for maptool
+
+- name: install xpra
+  include_tasks: install_xpra_{{ ansible_distribution }}.yml
+
+- name: install maptool
+  include_tasks: install_maptool_{{ ansible_distribution }}.yml
