@@ -28,3 +28,10 @@
         state: started
         enabled: yes
 
+- name: install maptool
+  hosts:
+    - tag_Role_maptool
+  become: yes
+  roles:
+    - maptool
+
