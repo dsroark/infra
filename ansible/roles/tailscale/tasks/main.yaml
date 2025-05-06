@@ -1,0 +1,47 @@
+---
+
+- name: Add Tailscale package signing key
+  ansible.builtin.apt_key:
+    url: https://pkgs.tailscale.com/stable/ubuntu/{{ ansible_distribution_release }}.noarmor.gpg
+    state: present
+
+- name: Add Tailscale repository
+  ansible.builtin.get_url:
+    url: https://pkgs.tailscale.com/stable/ubuntu/{{ ansible_distribution_release }}.tailscale-keyring.list
+    dest: /etc/apt/sources.list.d/tailscale.list
+  notify:
+    - Update apt cache
+
+- name: Install tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+
+    ## enable net.ipv4.forward net.and ipv6.conf.all.forwarding kernel parameters
+- name: Enable IP forwarding
+  ansible.builtin.sysctl:
+    name: "{{ item }}"
+    value: 1
+    state: present
+    reload: yes
+  loop:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
+
+- name: place ethtool file for UDP GRO forwarding
+  ansible.builtin.template:
+    src: 50-tailscale.j2
+    dest: /etc/networkd-dispatcher/routable.d/50-tailscale
+    mode: '0755'
+  register: ethtool_file
+
+- name: test ethool changes
+  ansible.builtin.command:
+    cmd: '/etc/networkd-dispatcher/routable.d/50-tailscale'
+  when: ethtool_file.changed
+
+- name: Start tailscale service
+  ansible.builtin.command:
+    cmd: 'tailscale up --authkey={{ tailscale_auth_key }} --advertise-routes={{ tailscale_advertised_routes }} --accept-dns=false --accept-routes --advertise-exit-node'
+  register: tailscale_up
+  changed_when: tailscale_up.stdout != ""

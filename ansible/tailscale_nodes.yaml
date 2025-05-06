@@ -1,0 +1,11 @@
+---
+
+## configures tailscale nodes (group: tailscale)
+
+  - name: Configure Tailscale nodes
+    hosts: tailscale
+    remote_user: "ubuntu"
+    become: yes
+    roles:
+      - base
+      - tailscale
